@@ -130,13 +130,13 @@
             <Tabs.Content value="avax">
                 <div class="mt-4">
                     <div class="flex w-full flex-col gap-1.5">
-                        <Label for="who" class="text-sm text-left">Slap</Label>
-                        <Input bind:value={toSlap} type="text" placeholder="Who to slap" />
+                        <Label for="avax-who" class="text-sm text-left">Slap</Label>
+                        <Input id="avax-who" name="avax-who" bind:value={toSlap} type="text" placeholder="Who to slap" />
                     </div>
                     
                     <div class="flex w-full flex-col gap-1.5 mt-4">
                         <div class="flex w-full items-center justify-between">
-                            <Label for="amount" class="text-sm">Amount</Label>
+                            <Label for="avax-amount" class="text-sm">Amount</Label>
                             <div class="text-right text-sm text-gray-700">
                                 Balance: <span class="font-medium">
                                     {nativeBalance === null ? "~" : format.wei(nativeBalance)} AVAX
@@ -148,6 +148,8 @@
                                 <img src="/tokens/avax.svg" alt="Icon" class="w-5 h-5" />
                             </div>
                             <Input 
+                                id="avax-amount" 
+                                name="avax-amount" 
                                 bind:value={avaxAmount} 
                                 type="text" 
                                 class="pl-10 pr-14 w-full {amountError ? 'border-red-500' : ''}" 
@@ -171,13 +173,13 @@
             <Tabs.Content value="token">
                 <div class="mt-4">
                     <div class="flex w-full flex-col gap-1.5">
-                        <Label for="who" class="text-left">Slap</Label>
-                        <Input bind:value={toSlap} type="text" placeholder="Who to slap" />
+                        <Label for="token-who" class="text-left">Slap</Label>
+                        <Input id="token-who" name="token-who" bind:value={toSlap} type="text" placeholder="Who to slap" />
                     </div>
                     
                     <div class="flex w-full flex-col gap-1.5 mt-4">
                         <div class="flex w-full items-center justify-between">
-                            <Label for="amount" class="text-sm">Amount</Label>
+                            <Label for="token-amount" class="text-sm">Amount</Label>
                             <div class="text-right text-sm text-gray-700">
                                 Balance: <span class="font-medium">
                                     {tokenBalance === null ? "~" : format.wei(tokenBalance)}
@@ -189,6 +191,8 @@
                                 <img src="/tokens/slap.png" alt="Icon" class="w-5 h-5" />
                             </div>
                             <Input 
+                                id="token-amount" 
+                                name="token-amount" 
                                 bind:value={slapAmount} 
                                 type="text" 
                                 class="pl-10 pr-14 w-full {amountError ? 'border-red-500' : ''}" 
