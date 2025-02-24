@@ -52,4 +52,4 @@
 
     });
 </script>
-<appkit-button />
+<appkit-button props></appkit-button>
