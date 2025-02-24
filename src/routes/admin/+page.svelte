@@ -3,51 +3,48 @@
     import * as Card from "$lib/components/ui/card";
     import * as Table from "$lib/components/ui/table";
     import { Button } from "$lib/components/ui/button";
-    import { connected, signerAddress } from "$lib/store";
+    import { connected, signerAddress, isAdmin } from "$lib/store";
     import { onMount } from 'svelte';
     import * as format from "$lib/format";
 
-    let isAdmin = $state(false);
     let requests = $state([]);
     let loading = $state(true);
 
-    async function checkAdminStatus() {
-        if (!$signerAddress) return;
-        
-        const { data } = await supabase
-            .from('admins')
-            .select()
-            .eq('wallet_address', $signerAddress)
-            .single();
-            
-        isAdmin = !!data;
-    }
-
     async function loadRequests() {
-        const { data } = await supabase
-            .from('whitelist_requests')
-            .select('*')
-            .order('created_at', { ascending: false });
-            
-        requests = data || [];
-        loading = false;
+        try {
+            loading = true;
+            const { data, error } = await supabase
+                .from('whitelist_requests')
+                .select('*, users!inner(*)')
+                .order('created_at', { ascending: false });
+                
+            if (error) throw error;
+            requests = data || [];
+        } catch (error) {
+            console.error('Failed to load requests:', error);
+        } finally {
+            loading = false;
+        }
     }
 
     async function updateStatus(id, newStatus) {
-        await supabase
-            .from('whitelist_requests')
-            .update({ status: newStatus })
-            .eq('id', id);
-            
-        await loadRequests();
+        try {
+            const { error } = await supabase
+                .from('whitelist_requests')
+                .update({ status: newStatus })
+                .eq('id', id);
+                
+            if (error) throw error;
+            await loadRequests();
+        } catch (error) {
+            console.error('Failed to update status:', error);
+            alert('Failed to update request status. Please try again.');
+        }
     }
 
     $effect(() => {
-        if ($connected && $signerAddress) {
-            checkAdminStatus();
-            if (isAdmin) {
-                loadRequests();
-            }
+        if ($connected && $signerAddress && $isAdmin) {
+            loadRequests();
         }
     });
 </script>
@@ -59,7 +56,7 @@
                 Please connect your wallet to access the admin panel.
             </Card.Content>
         </Card.Root>
-    {:else if !isAdmin}
+    {:else if !$isAdmin}
         <Card.Root class="max-w-md mx-auto">
             <Card.Content class="text-center py-8">
                 You don't have admin access.

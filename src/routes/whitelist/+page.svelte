@@ -12,32 +12,59 @@
         if (!$signerAddress) return;
         
         loading = true;
-        const { data, error } = await supabase
-            .from('whitelist_requests')
-            .select('status')
-            .eq('wallet_address', $signerAddress)
-            .single();
-            
-        if (data) {
-            status = data.status;
+        try {
+            const { data, error } = await supabase
+                .from('whitelist_requests')
+                .select('status')
+                .eq('wallet_address', $signerAddress.toLowerCase());
+                
+            if (data && data.length > 0) {
+                status = data[0].status;
+            } else {
+                status = '';
+            }
+        } catch (error) {
+            console.error('Failed to check whitelist status:', error);
+        } finally {
+            loading = false;
         }
-        loading = false;
     }
 
     async function requestWhitelist() {
         if (!$signerAddress) return;
         
         loading = true;
-        const { error } = await supabase
-            .from('whitelist_requests')
-            .insert([
-                { wallet_address: $signerAddress, status: 'pending' }
-            ]);
-            
-        if (!error) {
-            status = 'pending';
+        try {
+            // First ensure user exists
+            const { error: userError } = await supabase
+                .from('users')
+                .upsert([
+                    { wallet_address: $signerAddress.toLowerCase() }
+                ]);
+
+            if (userError) throw userError;
+
+            // Then create whitelist request
+            const { error } = await supabase
+                .from('whitelist_requests')
+                .insert([
+                    { 
+                        wallet_address: $signerAddress.toLowerCase(),
+                        status: 'pending'
+                    }
+                ]);
+                
+            if (!error) {
+                status = 'pending';
+            } else {
+                throw error;
+            }
+        } catch (error) {
+            console.error('Failed to request whitelist:', error);
+            alert('Failed to submit whitelist request. Please try again.');
+        } finally {
+            loading = false;
         }
-        loading = false;
     }
 
     $effect(() => {
@@ -65,7 +92,7 @@
                             disabled={loading} 
                             on:click={requestWhitelist}
                         >
-                            Request Whitelist
+                            {loading ? 'Submitting...' : 'Request Whitelist'}
                         </Button>
                     </div>
                 {:else if status === 'pending'}
@@ -81,11 +108,13 @@
                         <p class="text-red-500">Your whitelist request was not approved.</p>
                     </div>
                 {/if}
+                }
             {:else}
                 <div class="text-center">
                     <p>Please connect your wallet to request whitelist access.</p>
                 </div>
             {/if}
+            }
         </Card.Content>
     </Card.Root>
 </div>

@@ -11,6 +11,7 @@ export const signerAddress = writable(null);
 export const connected = writable(false);
 export const publicClient = writable(false);
 export const walletConnected = writable(false);
+export const isAdmin = writable(false);
 
 export const chatMessages = writable([]);
 export const recentSlaps = writable([]);
