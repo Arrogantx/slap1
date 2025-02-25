@@ -108,13 +108,13 @@
                         <p class="text-red-500">Your whitelist request was not approved.</p>
                     </div>
                 {/if}
-                }
+                
             {:else}
                 <div class="text-center">
                     <p>Please connect your wallet to request whitelist access.</p>
                 </div>
             {/if}
-            }
+            
         </Card.Content>
     </Card.Root>
 </div>
