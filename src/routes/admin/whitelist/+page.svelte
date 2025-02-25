@@ -128,7 +128,7 @@
                         {error}
                     </div>
                 {/if}
-                }
+                
                 
                 <div class="flex gap-4 mb-6">
                     <Button 
@@ -176,7 +176,7 @@
                                     </Table.Cell>
                                 </Table.Row>
                             {/each}
-                            }
+                            
                             
                             {#if (activeTab === 'approved' ? approvedRequests : deniedRequests).length === 0}
                                 <Table.Row>
@@ -185,13 +185,13 @@
                                     </Table.Cell>
                                 </Table.Row>
                             {/if}
-                            }
+                            
                         {/if}
-                        }
+                        
                     </Table.Body>
                 </Table.Root>
             </Card.Content>
         </Card.Root>
     {/if}
-    }
+    
 </div>

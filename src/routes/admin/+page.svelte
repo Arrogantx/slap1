@@ -46,18 +46,42 @@
             updating = true;
             error = null;
 
-            // Perform the update
+            // First verify the request still exists and is pending
+            const { data: currentRequest, error: checkError } = await supabase
+                .from('whitelist_requests')
+                .select('status')
+                .eq('id', id)
+                .single();
+
+            if (checkError) throw checkError;
+            if (!currentRequest) throw new Error('Request not found');
+            if (currentRequest.status !== 'pending') throw new Error('Request is no longer pending');
+
+            // Perform the update with optimistic concurrency control
             const { error: updateError } = await supabase
                 .from('whitelist_requests')
-                .update({
+                .update({ 
                     status: newStatus,
                     updated_at: new Date().toISOString()
                 })
-                .eq('id', id);
+                .eq('id', id)
+                .eq('status', 'pending'); // Only update if still pending
 
             if (updateError) throw updateError;
 
-            // Update local state
+            // Verify the update was successful
+            const { data: verifyRequest, error: verifyError } = await supabase
+                .from('whitelist_requests')
+                .select('status')
+                .eq('id', id)
+                .single();
+
+            if (verifyError) throw verifyError;
+            if (!verifyRequest || verifyRequest.status !== newStatus) {
+                throw new Error('Failed to verify status update');
+            }
+
+            // Update local state only after successful database update
             requests = requests.filter(request => request.id !== id);
 
         } catch (err) {
@@ -114,9 +138,14 @@
                             <Card.Title>Pending Whitelist Requests</Card.Title>
                             <Card.Description>Manage pending whitelist requests</Card.Description>
                         </div>
-                        <Button on:click={() => goto('/admin/whitelist')}>
-                            View All Requests
-                        </Button>
+                        <div class="flex gap-4">
+                            <Button on:click={() => goto('/admin/blacklist')}>
+                                Manage Blacklist
+                            </Button>
+                            <Button on:click={() => goto('/admin/whitelist')}>
+                                View All Requests
+                            </Button>
+                        </div>
                     </div>
                 </Card.Header>
                 <Card.Content>
@@ -125,7 +154,7 @@
                             {error}
                         </div>
                     {/if}
-                    }
+                    
                     <Table.Root>
                         <Table.Header>
                             <Table.Row>
@@ -173,14 +202,14 @@
                                         </Table.Cell>
                                     </Table.Row>
                                 {/each}
-                                }
+                                
                             {/if}
-                            }
+                            
                         </Table.Body>
                     </Table.Root>
                 </Card.Content>
             </Card.Root>
         </div>
     {/if}
-    }
+    
 </div>

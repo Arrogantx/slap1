@@ -17,6 +17,25 @@
             const lowerAddress = $signerAddress.toLowerCase();
             console.log('Checking whitelist status for:', lowerAddress);
             
+            // First check if address is blacklisted
+            const { data: blacklistData, error: blacklistError } = await supabase
+                .from('blacklist')
+                .select('id')
+                .eq('wallet_address', lowerAddress)
+                .single();
+                
+            if (blacklistError && blacklistError.code !== 'PGRST116') {
+                console.error('Blacklist check error:', blacklistError);
+                throw blacklistError;
+            }
+            
+            if (blacklistData) {
+                status = 'denied';
+                lastChecked = new Date();
+                return;
+            }
+            
+            // Then check whitelist status
             const { data, error } = await supabase
                 .from('whitelist_requests')
                 .select('status, updated_at')
@@ -53,6 +72,24 @@
         try {
             const lowerAddress = $signerAddress.toLowerCase();
             console.log('Submitting whitelist request for:', lowerAddress);
+            
+            // Check if address is blacklisted
+            const { data: blacklistData, error: blacklistError } = await supabase
+                .from('blacklist')
+                .select('id')
+                .eq('wallet_address', lowerAddress)
+                .single();
+                
+            if (blacklistError && blacklistError.code !== 'PGRST116') {
+                console.error('Blacklist check error:', blacklistError);
+                throw blacklistError;
+            }
+            
+            if (blacklistData) {
+                status = 'denied';
+                lastChecked = new Date();
+                return;
+            }
             
             // Create whitelist request
             const { error } = await supabase
@@ -139,7 +176,7 @@
                                 Submitted: {lastChecked.toLocaleDateString()} {lastChecked.toLocaleTimeString()}
                             </p>
                         {/if}
-                        }
+                        
                     </div>
                 {:else if status === 'approved'}
                     <div class="text-center">
@@ -149,7 +186,7 @@
                                 Approved: {lastChecked.toLocaleDateString()} {lastChecked.toLocaleTimeString()}
                             </p>
                         {/if}
-                        }
+                        
                     </div>
                 {:else if status === 'denied'}
                     <div class="text-center">
@@ -159,16 +196,16 @@
                                 Updated: {lastChecked.toLocaleDateString()} {lastChecked.toLocaleTimeString()}
                             </p>
                         {/if}
-                        }
+                        
                     </div>
                 {/if}
-                }
+                
             {:else}
                 <div class="text-center">
                     <p>Please connect your wallet to request whitelist access.</p>
                 </div>
             {/if}
-            }
+            
         </Card.Content>
     </Card.Root>
 </div>

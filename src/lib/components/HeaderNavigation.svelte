@@ -9,7 +9,7 @@
 
     $effect(() => {
         if ($connected && $signerAddress) {
-            console.log('Navigation - Connected Address:', $signerAddress);
+            console.log('Navigation - Connected Address:', $signerAddress);https://mail.google.com/mail/u/5/#inbox/FMfcgzQZTMHMjSqbkpXBKXQnJKxNGlSD
             console.log('Navigation - Is Admin:', $isAdmin);
         }
     });
