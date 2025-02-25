@@ -13,18 +13,24 @@
         
         loading = true;
         try {
+            const lowerAddress = $signerAddress.toLowerCase();
+            console.log('Checking whitelist status for:', lowerAddress);
+            
             const { data, error } = await supabase
                 .from('whitelist_requests')
                 .select('status')
-                .eq('wallet_address', $signerAddress.toLowerCase());
+                .eq('wallet_address', lowerAddress);
                 
-            if (data && data.length > 0) {
-                status = data[0].status;
-            } else {
-                status = '';
+            if (error) {
+                console.error('Whitelist status check error:', error);
+                throw error;
             }
+            
+            status = data && data.length > 0 ? data[0].status : '';
+            console.log('Whitelist status:', status, 'Data:', data);
         } catch (error) {
             console.error('Failed to check whitelist status:', error);
+            status = '';
         } finally {
             loading = false;
         }
@@ -35,30 +41,24 @@
         
         loading = true;
         try {
-            // First ensure user exists
-            const { error: userError } = await supabase
-                .from('users')
-                .upsert([
-                    { wallet_address: $signerAddress.toLowerCase() }
-                ]);
-
-            if (userError) throw userError;
-
-            // Then create whitelist request
+            const lowerAddress = $signerAddress.toLowerCase();
+            console.log('Submitting whitelist request for:', lowerAddress);
+            
+            // Create whitelist request
             const { error } = await supabase
                 .from('whitelist_requests')
-                .insert([
-                    { 
-                        wallet_address: $signerAddress.toLowerCase(),
-                        status: 'pending'
-                    }
-                ]);
+                .insert([{ 
+                    wallet_address: lowerAddress,
+                    status: 'pending'
+                }]);
                 
-            if (!error) {
-                status = 'pending';
-            } else {
+            if (error) {
+                console.error('Whitelist request error:', error);
                 throw error;
             }
+            
+            status = 'pending';
+            console.log('Whitelist request submitted successfully');
         } catch (error) {
             console.error('Failed to request whitelist:', error);
             alert('Failed to submit whitelist request. Please try again.');

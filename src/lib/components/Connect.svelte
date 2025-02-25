@@ -27,12 +27,22 @@
         }
         
         try {
+            const lowerAddress = address.toLowerCase();
+            console.log('Checking admin status for:', lowerAddress);
+            
             const { data, error } = await supabase
                 .from('admins')
-                .select('wallet_address')
-                .eq('wallet_address', address.toLowerCase());
+                .select('*')
+                .eq('wallet_address', lowerAddress);
                 
+            if (error) {
+                console.error('Admin check error:', error);
+                $isAdmin = false;
+                return;
+            }
+            
             $isAdmin = data && data.length > 0;
+            console.log('Admin status result:', $isAdmin, 'Data:', data);
         } catch (error) {
             console.error('Admin check failed:', error);
             $isAdmin = false;

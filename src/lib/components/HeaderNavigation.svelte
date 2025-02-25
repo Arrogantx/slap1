@@ -5,7 +5,14 @@
     import * as Sheet from "$lib/components/ui/sheet";
     import { Button } from "$lib/components/ui/button";
     import * as config from "$lib/config";
-    import { isAdmin } from "$lib/store";
+    import { isAdmin, connected, signerAddress } from "$lib/store";
+
+    $effect(() => {
+        if ($connected && $signerAddress) {
+            console.log('Navigation - Connected Address:', $signerAddress);
+            console.log('Navigation - Is Admin:', $isAdmin);
+        }
+    });
 </script>
 
 <header class="bg-background w-full sticky top-0 flex h-16 items-center border-b px-4 md:px-6 z-50">
