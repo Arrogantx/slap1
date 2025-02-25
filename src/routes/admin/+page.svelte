@@ -22,7 +22,6 @@
                 
             if (error) throw error;
             requests = data || [];
-            console.log('Loaded requests:', requests);
         } catch (error) {
             console.error('Failed to load requests:', error);
         } finally {
@@ -32,13 +31,22 @@
 
     async function updateStatus(id, newStatus) {
         try {
+            // Update the local state immediately to reflect the change
+            requests = requests.filter(request => request.id !== id);
+            
             const { error } = await supabase
                 .from('whitelist_requests')
-                .update({ status: newStatus })
+                .update({ 
+                    status: newStatus,
+                    updated_at: new Date().toISOString()
+                })
                 .eq('id', id);
                 
-            if (error) throw error;
-            await loadRequests();
+            if (error) {
+                // If there was an error, reload the requests to restore the correct state
+                await loadRequests();
+                throw error;
+            }
         } catch (error) {
             console.error('Failed to update status:', error);
             alert('Failed to update request status. Please try again.');
@@ -46,13 +54,20 @@
     }
 
     $effect(() => {
-        console.log('Admin Page - Connected:', $connected);
-        console.log('Admin Page - Address:', $signerAddress);
-        console.log('Admin Page - Is Admin:', $isAdmin);
-        
         if ($connected && $signerAddress && $isAdmin) {
             loadRequests();
         }
+    });
+
+    // Set up periodic refresh
+    onMount(() => {
+        const interval = setInterval(() => {
+            if ($connected && $signerAddress && $isAdmin) {
+                loadRequests();
+            }
+        }, 15000); // Refresh every 15 seconds
+
+        return () => clearInterval(interval);
     });
 </script>
 
@@ -129,14 +144,14 @@
                                         </Table.Cell>
                                     </Table.Row>
                                 {/each}
-                                
+                                }
                             {/if}
-                            
+                            }
                         </Table.Body>
                     </Table.Root>
                 </Card.Content>
             </Card.Root>
         </div>
     {/if}
-    
+    }
 </div>

@@ -22,12 +22,12 @@
                     .from('whitelist_requests')
                     .select('*')
                     .eq('status', 'approved')
-                    .order('created_at', { ascending: false }),
+                    .order('updated_at', { ascending: false }),
                 supabase
                     .from('whitelist_requests')
                     .select('*')
                     .eq('status', 'denied')
-                    .order('created_at', { ascending: false })
+                    .order('updated_at', { ascending: false })
             ]);
 
             if (approvedData.error) throw approvedData.error;
@@ -43,13 +43,14 @@
     }
 
     function exportToCSV(data, filename) {
-        const headers = ['Wallet Address', 'Status', 'Date'];
+        const headers = ['Wallet Address', 'Status', 'Date', 'Updated'];
         const csvContent = [
             headers.join(','),
             ...data.map(row => [
                 row.wallet_address,
                 row.status,
-                new Date(row.created_at).toISOString()
+                new Date(row.created_at).toISOString(),
+                new Date(row.updated_at).toISOString()
             ].join(','))
         ].join('\n');
 
@@ -68,6 +69,17 @@
         if ($connected && $signerAddress && $isAdmin) {
             loadRequests();
         }
+    });
+
+    // Set up periodic refresh
+    onMount(() => {
+        const interval = setInterval(() => {
+            if ($connected && $signerAddress && $isAdmin) {
+                loadRequests();
+            }
+        }, 15000); // Refresh every 15 seconds
+
+        return () => clearInterval(interval);
     });
 </script>
 
@@ -122,12 +134,13 @@
                             <Table.Head>Wallet</Table.Head>
                             <Table.Head>Status</Table.Head>
                             <Table.Head>Date</Table.Head>
+                            <Table.Head>Updated</Table.Head>
                         </Table.Row>
                     </Table.Header>
                     <Table.Body>
                         {#if loading}
                             <Table.Row>
-                                <Table.Cell colspan="3" class="text-center">Loading...</Table.Cell>
+                                <Table.Cell colspan="4" class="text-center">Loading...</Table.Cell>
                             </Table.Row>
                         {:else}
                             {#each (activeTab === 'approved' ? approvedRequests : deniedRequests) as request}
@@ -141,23 +154,27 @@
                                     <Table.Cell>
                                         {new Date(request.created_at).toLocaleDateString()}
                                     </Table.Cell>
+                                    <Table.Cell>
+                                        {new Date(request.updated_at).toLocaleDateString()}
+                                    </Table.Cell>
                                 </Table.Row>
                             {/each}
+                            }
                             
                             {#if (activeTab === 'approved' ? approvedRequests : deniedRequests).length === 0}
                                 <Table.Row>
-                                    <Table.Cell colspan="3" class="text-center text-muted-foreground">
+                                    <Table.Cell colspan="4" class="text-center text-muted-foreground">
                                         No {activeTab} requests found
                                     </Table.Cell>
                                 </Table.Row>
                             {/if}
-                            
+                            }
                         {/if}
-                        
+                        }
                     </Table.Body>
                 </Table.Root>
             </Card.Content>
         </Card.Root>
     {/if}
-    
+    }
 </div>
