@@ -6,17 +6,20 @@
     import { connected, signerAddress, isAdmin } from "$lib/store";
     import { onMount } from 'svelte';
     import * as format from "$lib/format";
+    import { goto } from '$app/navigation';
 
     let approvedRequests = $state([]);
     let deniedRequests = $state([]);
     let loading = $state(true);
     let activeTab = $state('approved'); // 'approved' or 'denied'
+    let error = $state(null);
 
     async function loadRequests() {
         if (!$isAdmin) return;
         
         try {
             loading = true;
+            error = null;
             const [approvedData, deniedData] = await Promise.all([
                 supabase
                     .from('whitelist_requests')
@@ -35,8 +38,9 @@
 
             approvedRequests = approvedData.data || [];
             deniedRequests = deniedData.data || [];
-        } catch (error) {
-            console.error('Failed to load requests:', error);
+        } catch (err) {
+            console.error('Failed to load requests:', err);
+            error = 'Failed to load requests. Please try again.';
         } finally {
             loading = false;
         }
@@ -71,13 +75,12 @@
         }
     });
 
-    // Set up periodic refresh
     onMount(() => {
         const interval = setInterval(() => {
             if ($connected && $signerAddress && $isAdmin) {
                 loadRequests();
             }
-        }, 15000); // Refresh every 15 seconds
+        }, 15000);
 
         return () => clearInterval(interval);
     });
@@ -99,32 +102,46 @@
     {:else}
         <Card.Root>
             <Card.Header>
-                <Card.Title>Whitelist Management</Card.Title>
-                <Card.Description>Manage approved and denied whitelist requests</Card.Description>
-            </Card.Header>
-            <Card.Content>
-                <div class="flex justify-between mb-6">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <Card.Title>Whitelist Management</Card.Title>
+                        <Card.Description>Manage approved and denied whitelist requests</Card.Description>
+                    </div>
                     <div class="flex gap-4">
-                        <Button 
-                            variant={activeTab === 'approved' ? 'default' : 'outline'}
-                            on:click={() => activeTab = 'approved'}
-                        >
-                            Approved Requests
+                        <Button variant="outline" on:click={() => goto('/admin')}>
+                            Return to Pending Requests
                         </Button>
                         <Button 
-                            variant={activeTab === 'denied' ? 'default' : 'outline'}
-                            on:click={() => activeTab = 'denied'}
+                            on:click={() => exportToCSV(
+                                activeTab === 'approved' ? approvedRequests : deniedRequests,
+                                `whitelist-${activeTab}-${new Date().toISOString().split('T')[0]}.csv`
+                            )}
                         >
-                            Denied Requests
+                            Export as CSV
                         </Button>
                     </div>
+                </div>
+            </Card.Header>
+            <Card.Content>
+                {#if error}
+                    <div class="bg-destructive/10 text-destructive p-4 rounded-md mb-4">
+                        {error}
+                    </div>
+                {/if}
+                }
+                
+                <div class="flex gap-4 mb-6">
                     <Button 
-                        on:click={() => exportToCSV(
-                            activeTab === 'approved' ? approvedRequests : deniedRequests,
-                            `whitelist-${activeTab}-${new Date().toISOString().split('T')[0]}.csv`
-                        )}
+                        variant={activeTab === 'approved' ? 'default' : 'outline'}
+                        on:click={() => activeTab = 'approved'}
                     >
-                        Export as CSV
+                        Approved Requests
+                    </Button>
+                    <Button 
+                        variant={activeTab === 'denied' ? 'default' : 'outline'}
+                        on:click={() => activeTab = 'denied'}
+                    >
+                        Denied Requests
                     </Button>
                 </div>
 

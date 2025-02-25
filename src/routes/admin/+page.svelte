@@ -11,92 +11,72 @@
     let requests = $state([]);
     let loading = $state(true);
     let updating = $state(false);
+    let error = $state(null);
 
     async function loadRequests() {
+        if (!$connected || !$signerAddress || !$isAdmin) {
+            requests = [];
+            return;
+        }
+
         try {
             loading = true;
-            const { data, error } = await supabase
+            error = null;
+            const { data, error: fetchError } = await supabase
                 .from('whitelist_requests')
                 .select('*')
                 .eq('status', 'pending')
                 .order('created_at', { ascending: false });
                 
-            if (error) throw error;
+            if (fetchError) throw fetchError;
             requests = data || [];
-        } catch (error) {
-            console.error('Failed to load requests:', error);
+        } catch (err) {
+            console.error('Failed to load requests:', err);
+            error = 'Failed to load whitelist requests. Please try again.';
+            requests = [];
         } finally {
             loading = false;
         }
     }
 
-    async function verifyUpdate(id, expectedStatus, maxAttempts = 3) {
-        for (let attempt = 0; attempt < maxAttempts; attempt++) {
-            // Wait a short time before checking
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            const { data, error } = await supabase
-                .from('whitelist_requests')
-                .select('status')
-                .eq('id', id)
-                .single();
-                
-            if (!error && data?.status === expectedStatus) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     async function updateStatus(id, newStatus) {
-        if (updating) return;
+        if (updating || !id || !newStatus) return;
         
         try {
             updating = true;
-            
-            // Check if request exists and is pending
-            const { data: checkData, error: checkError } = await supabase
-                .from('whitelist_requests')
-                .select('status')
-                .eq('id', id)
-                .single();
-                
-            if (checkError) throw checkError;
-            if (!checkData || checkData.status !== 'pending') {
-                throw new Error('Request no longer pending');
-            }
-            
+            error = null;
+
             // Perform the update
             const { error: updateError } = await supabase
                 .from('whitelist_requests')
-                .update({ 
+                .update({
                     status: newStatus,
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', id);
-                
+
             if (updateError) throw updateError;
-            
-            // Verify the update with retries
-            const verified = await verifyUpdate(id, newStatus);
-            if (!verified) {
-                throw new Error('Status update could not be verified');
-            }
-            
-            // Remove the request from the local list
+
+            // Update local state
             requests = requests.filter(request => request.id !== id);
-            
-        } catch (error) {
-            console.error('Failed to update status:', error);
-            alert(`Failed to update request status: ${error.message}`);
+
+        } catch (err) {
+            console.error('Failed to update status:', err);
+            error = `Failed to update request status: ${err.message}`;
+            // Reload requests to ensure consistent state
+            await loadRequests();
         } finally {
             updating = false;
         }
     }
 
+    // Watch for connection and admin status changes
     $effect(() => {
         if ($connected && $signerAddress && $isAdmin) {
             loadRequests();
+        } else {
+            requests = [];
+            error = null;
         }
     });
 
@@ -106,7 +86,7 @@
             if ($connected && $signerAddress && $isAdmin) {
                 loadRequests();
             }
-        }, 15000); // Refresh every 15 seconds
+        }, 15000);
 
         return () => clearInterval(interval);
     });
@@ -140,6 +120,12 @@
                     </div>
                 </Card.Header>
                 <Card.Content>
+                    {#if error}
+                        <div class="bg-destructive/10 text-destructive p-4 rounded-md mb-4">
+                            {error}
+                        </div>
+                    {/if}
+                    }
                     <Table.Root>
                         <Table.Header>
                             <Table.Row>
