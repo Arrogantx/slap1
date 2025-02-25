@@ -10,6 +10,7 @@
 
     let requests = $state([]);
     let loading = $state(true);
+    let updating = $state(false);
 
     async function loadRequests() {
         try {
@@ -29,12 +30,44 @@
         }
     }
 
-    async function updateStatus(id, newStatus) {
-        try {
-            // Update the local state immediately to reflect the change
-            requests = requests.filter(request => request.id !== id);
+    async function verifyUpdate(id, expectedStatus, maxAttempts = 3) {
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            // Wait a short time before checking
+            await new Promise(resolve => setTimeout(resolve, 500));
             
-            const { error } = await supabase
+            const { data, error } = await supabase
+                .from('whitelist_requests')
+                .select('status')
+                .eq('id', id)
+                .single();
+                
+            if (!error && data?.status === expectedStatus) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    async function updateStatus(id, newStatus) {
+        if (updating) return;
+        
+        try {
+            updating = true;
+            
+            // Check if request exists and is pending
+            const { data: checkData, error: checkError } = await supabase
+                .from('whitelist_requests')
+                .select('status')
+                .eq('id', id)
+                .single();
+                
+            if (checkError) throw checkError;
+            if (!checkData || checkData.status !== 'pending') {
+                throw new Error('Request no longer pending');
+            }
+            
+            // Perform the update
+            const { error: updateError } = await supabase
                 .from('whitelist_requests')
                 .update({ 
                     status: newStatus,
@@ -42,14 +75,22 @@
                 })
                 .eq('id', id);
                 
-            if (error) {
-                // If there was an error, reload the requests to restore the correct state
-                await loadRequests();
-                throw error;
+            if (updateError) throw updateError;
+            
+            // Verify the update with retries
+            const verified = await verifyUpdate(id, newStatus);
+            if (!verified) {
+                throw new Error('Status update could not be verified');
             }
+            
+            // Remove the request from the local list
+            requests = requests.filter(request => request.id !== id);
+            
         } catch (error) {
             console.error('Failed to update status:', error);
-            alert('Failed to update request status. Please try again.');
+            alert(`Failed to update request status: ${error.message}`);
+        } finally {
+            updating = false;
         }
     }
 
@@ -129,16 +170,18 @@
                                             <div class="flex gap-2">
                                                 <Button
                                                     size="sm"
+                                                    disabled={updating}
                                                     on:click={() => updateStatus(request.id, 'approved')}
                                                 >
-                                                    Approve
+                                                    {updating ? 'Updating...' : 'Approve'}
                                                 </Button>
                                                 <Button
                                                     size="sm"
                                                     variant="destructive"
+                                                    disabled={updating}
                                                     on:click={() => updateStatus(request.id, 'denied')}
                                                 >
-                                                    Deny
+                                                    {updating ? 'Updating...' : 'Deny'}
                                                 </Button>
                                             </div>
                                         </Table.Cell>
